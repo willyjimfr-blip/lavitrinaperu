@@ -413,4 +413,4 @@ export default function CategoriasAdmin() {
       </div>
     </AdminRoute>
   );
-}s
+}
