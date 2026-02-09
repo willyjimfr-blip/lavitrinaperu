@@ -1,7 +1,7 @@
 // app/buscar/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Listing } from '@/types';
@@ -10,7 +10,7 @@ import SearchBar from '@/components/SearchBar';
 import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 
-export default function BuscarPage() {
+function BuscarContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
   
@@ -125,5 +125,23 @@ export default function BuscarPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BuscarPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <SearchBar />
+        </div>
+        <div className="text-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Buscando...</p>
+        </div>
+      </div>
+    }>
+      <BuscarContent />
+    </Suspense>
   );
 }
