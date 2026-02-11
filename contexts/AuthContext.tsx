@@ -6,11 +6,12 @@ import {
   User as FirebaseUser,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, googleProvider } from '@/lib/firebase';
 import { User, UserRole } from '@/types';
 
 interface AuthContextType {
@@ -18,6 +19,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, role: UserRole, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
@@ -29,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   firebaseUser: null,
   loading: true,
   signIn: async () => {},
+  signInWithGoogle: async () => {},
   signUp: async () => {},
   signOut: async () => {},
   isAdmin: false,
@@ -52,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...userDoc.data() 
           } as User);
         } else {
+          // Usuario nuevo (primer login con Google)
+          // Se creará como merchant por defecto
           setUser(null);
         }
       } else {
@@ -68,9 +73,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signInWithGoogle = async () => {
+    const result = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = result.user;
+
+    // Verificar si el usuario ya existe en Firestore
+    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+    
+    if (!userDoc.exists()) {
+      // Verificar si es admin por email
+      const isAdminEmail = firebaseUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+      
+      // Crear nuevo usuario en Firestore
+      const newUser = {
+        email: firebaseUser.email || '',
+        role: isAdminEmail ? 'admin' : 'merchant' as UserRole,
+        displayName: firebaseUser.displayName || '',
+        active: true,
+        createdAt: new Date(),
+      };
+      
+      await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+      setUser({ uid: firebaseUser.uid, ...newUser });
+    } else {
+      setUser({ uid: firebaseUser.uid, ...userDoc.data() } as User);
+    }
+  };
+
   const signUp = async (
-    email: string, 
-    password: string, 
+    email: string,
+    password: string,
     role: UserRole,
     displayName?: string
   ) => {
@@ -82,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active: true,
       createdAt: new Date(),
     };
-    
     await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
   };
 
@@ -99,7 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user, 
         firebaseUser, 
         loading, 
-        signIn, 
+        signIn,
+        signInWithGoogle,
         signUp, 
         signOut, 
         isAdmin, 

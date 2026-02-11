@@ -1,27 +1,27 @@
+// components/AdminRoute.tsx
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
 
 export default function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
+    if (!loading && !user) {
       router.push('/login');
     }
-  }, [user, isAdmin, loading, router]);
+    if (!loading && user && !isAdmin) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, isAdmin, router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-gray-600">Verificando permisos...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-xl text-gray-600">Cargando...</div>
       </div>
     );
   }
