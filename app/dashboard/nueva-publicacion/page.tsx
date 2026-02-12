@@ -7,14 +7,15 @@ import { useRouter } from 'next/navigation';
 import { collection, addDoc, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { Category, ListingType } from '@/types';
+import { Category, User, ListingType } from '@/types';
 import { Upload, X, Loader } from 'lucide-react';
 import Image from 'next/image';
 
 export default function NuevaPublicacionPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const router = useRouter();
   
+  // Form state
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ListingType>('product');
   const [description, setDescription] = useState('');
@@ -22,12 +23,17 @@ export default function NuevaPublicacionPage() {
   const [categoryId, setCategoryId] = useState('');
   const [tags, setTags] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [selectedMerchantId, setSelectedMerchantId] = useState('');
   
+  // Images
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   
+  // Data
   const [categories, setCategories] = useState<Category[]>([]);
+  const [merchants, setMerchants] = useState<User[]>([]);
   
+  // UI state
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -39,12 +45,23 @@ export default function NuevaPublicacionPage() {
       return;
     }
     
-    if (user.whatsapp) {
+    // Si es merchant, usar su propio whatsapp
+    if (user.whatsapp && !isAdmin) {
       setWhatsapp(user.whatsapp);
+    }
+
+    // Si es merchant, asignarse a sí mismo
+    if (!isAdmin) {
+      setSelectedMerchantId(user.uid);
     }
     
     fetchCategories();
-  }, [user, router]);
+    
+    // Si es admin, cargar lista de comerciantes
+    if (isAdmin) {
+      fetchMerchants();
+    }
+  }, [user, isAdmin, router]);
 
   const fetchCategories = async () => {
     try {
@@ -61,6 +78,25 @@ export default function NuevaPublicacionPage() {
       setCategories(cats);
     } catch (error) {
       console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchMerchants = async () => {
+    try {
+      // Obtener todos los usuarios (merchants y admins)
+      const snapshot = await getDocs(collection(db, 'users'));
+      const allUsers = snapshot.docs.map(doc => ({
+        uid: doc.id,
+        ...doc.data()
+      })) as User[];
+      
+      // Filtrar solo merchants activos
+      const activeMerchants = allUsers.filter(u => 
+        u.role === 'merchant' && u.active
+      );
+      setMerchants(activeMerchants);
+    } catch (error) {
+      console.error('Error fetching merchants:', error);
     }
   };
 
@@ -102,7 +138,6 @@ export default function NuevaPublicacionPage() {
         urls.push(url);
       }
     } catch (error) {
-      console.error('Error uploading images:', error);
       throw new Error('Error subiendo imágenes');
     } finally {
       setUploadingImages(false);
@@ -115,28 +150,36 @@ export default function NuevaPublicacionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
+    // Validaciones
     if (!title.trim()) {
       setError('El título es requerido');
-      setLoading(false);
       return;
     }
-
     if (!categoryId) {
       setError('Selecciona una categoría');
-      setLoading(false);
+      return;
+    }
+    if (!whatsapp.trim()) {
+      setError('El número de WhatsApp es requerido');
+      return;
+    }
+    if (imageFiles.length === 0) {
+      setError('Sube al menos una imagen');
+      return;
+    }
+    if (isAdmin && !selectedMerchantId) {
+      setError('Selecciona un comerciante para esta publicación');
       return;
     }
 
-    if (imageFiles.length === 0) {
-      setError('Sube al menos una imagen');
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
 
     try {
       const imageUrls = await uploadImages();
+
+      // Determinar el merchantId
+      const merchantId = isAdmin ? selectedMerchantId : user!.uid;
 
       const listingData = {
         title: title.trim(),
@@ -146,7 +189,7 @@ export default function NuevaPublicacionPage() {
         images: imageUrls,
         categoryId,
         tags: tags.split(',').map(t => t.trim()).filter(t => t),
-        merchantId: user!.uid,
+        merchantId,
         whatsapp: whatsapp.trim(),
         featured: false,
         active: true,
@@ -156,10 +199,15 @@ export default function NuevaPublicacionPage() {
 
       await addDoc(collection(db, 'listings'), listingData);
       
-      router.push('/dashboard');
+      // Redirigir según rol
+      if (isAdmin) {
+        router.push('/admin/publicaciones');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error) {
       console.error('Error creating listing:', error);
-      setError('Error al crear la publicación. Por favor intenta nuevamente.');
+      setError('Error al crear la publicación. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -174,7 +222,10 @@ export default function NuevaPublicacionPage() {
           Nueva Publicación
         </h1>
         <p className="text-gray-600">
-          Completa el formulario para publicar tu producto o servicio
+          {isAdmin 
+            ? 'Crea una publicación y asígnala a un comerciante' 
+            : 'Completa el formulario para publicar tu producto o servicio'
+          }
         </p>
       </div>
 
@@ -185,6 +236,41 @@ export default function NuevaPublicacionPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-xl shadow-md p-6">
+
+        {/* Selector de Comerciante (Solo Admin) */}
+        {isAdmin && (
+          <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
+            <label className="block text-sm font-bold text-primary-700 mb-2">
+              👤 Asignar a Comerciante *
+            </label>
+            <select
+              value={selectedMerchantId}
+              onChange={(e) => {
+                setSelectedMerchantId(e.target.value);
+                // Auto-rellenar WhatsApp si el merchant lo tiene
+                const merchant = merchants.find(m => m.uid === e.target.value);
+                if (merchant?.whatsapp) {
+                  setWhatsapp(merchant.whatsapp);
+                }
+              }}
+              required
+              className="w-full px-4 py-3 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+            >
+              <option value="">Selecciona un comerciante</option>
+              {merchants.map(merchant => (
+                <option key={merchant.uid} value={merchant.uid}>
+                  {merchant.displayName || merchant.email} — {merchant.email}
+                </option>
+              ))}
+            </select>
+            {merchants.length === 0 && (
+              <p className="mt-2 text-sm text-primary-600">
+                ⚠️ No hay comerciantes registrados aún.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Tipo */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -218,11 +304,10 @@ export default function NuevaPublicacionPage() {
 
         {/* Título */}
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Título *
           </label>
           <input
-            id="title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -235,11 +320,10 @@ export default function NuevaPublicacionPage() {
 
         {/* Categoría */}
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Categoría *
           </label>
           <select
-            id="category"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             required
@@ -256,15 +340,14 @@ export default function NuevaPublicacionPage() {
 
         {/* Descripción */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Descripción *
           </label>
           <textarea
-            id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
-            rows={6}
+            rows={5}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             placeholder="Describe tu producto o servicio en detalle..."
           />
@@ -272,11 +355,10 @@ export default function NuevaPublicacionPage() {
 
         {/* Precio */}
         <div>
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Precio *
           </label>
           <input
-            id="price"
             type="text"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -284,18 +366,14 @@ export default function NuevaPublicacionPage() {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             placeholder="Ej: S/ 100, Desde S/ 50, Consultar"
           />
-          <p className="mt-1 text-sm text-gray-500">
-            Puedes poner un precio exacto o indicar "Consultar", "Desde S/ X", etc.
-          </p>
         </div>
 
         {/* WhatsApp */}
         <div>
-          <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-2">
-            WhatsApp (con código de país) *
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            WhatsApp *
           </label>
           <input
-            id="whatsapp"
             type="tel"
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
@@ -303,15 +381,17 @@ export default function NuevaPublicacionPage() {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             placeholder="+51 999 999 999"
           />
+          <p className="mt-1 text-sm text-gray-500">
+            Número que recibirá los mensajes de clientes
+          </p>
         </div>
 
         {/* Tags */}
         <div>
-          <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Etiquetas (opcional)
           </label>
           <input
-            id="tags"
             type="text"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
@@ -326,7 +406,7 @@ export default function NuevaPublicacionPage() {
             Imágenes * (máximo 5)
           </label>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-4">
             {imagePreviews.map((preview, index) => (
               <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                 <Image
@@ -338,15 +418,15 @@ export default function NuevaPublicacionPage() {
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </button>
               </div>
             ))}
             
             {imageFiles.length < 5 && (
-              <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-colors">
+              <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-colors">
                 <input
                   type="file"
                   accept="image/*"
@@ -354,14 +434,16 @@ export default function NuevaPublicacionPage() {
                   onChange={handleImageChange}
                   className="hidden"
                 />
-                <Upload className="w-8 h-8 text-gray-400" />
+                <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                <span className="text-xs text-gray-400">Subir</span>
               </label>
             )}
           </div>
 
+          {/* Progress Bar */}
           {uploadingImages && (
             <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex justify-between mb-1">
                 <span className="text-sm text-gray-600">Subiendo imágenes...</span>
                 <span className="text-sm font-medium text-primary-500">{uploadProgress}%</span>
               </div>
@@ -369,18 +451,16 @@ export default function NuevaPublicacionPage() {
                 <div 
                   className="bg-primary-500 h-2 rounded-full transition-all"
                   style={{ width: `${uploadProgress}%` }}
-                ></div>
+                />
               </div>
             </div>
           )}
           
-          <p className="text-sm text-gray-500">
-            Formatos: JPG, PNG. Tamaño máximo: 5MB por imagen
-          </p>
+          <p className="text-sm text-gray-500">JPG, PNG. Máx 5MB por imagen</p>
         </div>
 
-        {/* Submit */}
-        <div className="flex gap-4">
+        {/* Buttons */}
+        <div className="flex gap-4 pt-4">
           <button
             type="button"
             onClick={() => router.back()}
@@ -391,7 +471,7 @@ export default function NuevaPublicacionPage() {
           <button
             type="submit"
             disabled={loading || uploadingImages}
-            className="flex-1 bg-primary-500 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 bg-primary-500 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {(loading || uploadingImages) && <Loader className="w-5 h-5 animate-spin" />}
             {uploadingImages ? 'Subiendo imágenes...' : loading ? 'Publicando...' : 'Publicar'}

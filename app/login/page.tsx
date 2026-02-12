@@ -1,21 +1,19 @@
-// app/registro/page.tsx
+// app/login/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 
-export default function RegistroPage() {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
 
   const handleGoogleSignIn = async () => {
@@ -25,7 +23,8 @@ export default function RegistroPage() {
       await signInWithGoogle();
       router.push('/dashboard');
     } catch (err: any) {
-      setError('Error al registrarse con Google.');
+      setError('Error al iniciar sesión con Google.');
+      console.error(err);
     } finally {
       setGoogleLoading(false);
     }
@@ -34,28 +33,14 @@ export default function RegistroPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      await signUp(email, password, 'merchant', displayName);
+      await signIn(email, password);
       router.push('/dashboard');
     } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        setError('Este email ya está registrado');
-      } else {
-        setError('Error al crear la cuenta. Por favor intenta nuevamente.');
-      }
+      setError('Credenciales inválidas. Por favor verifica tu email y contraseña.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -65,25 +50,27 @@ export default function RegistroPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white px-4 py-12">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-              <UserPlus className="w-8 h-8 text-primary-500" />
+              <LogIn className="w-8 h-8 text-primary-500" />
             </div>
             <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
-              Crear Cuenta
+              Iniciar Sesión
             </h1>
             <p className="text-gray-600">
-              Comienza a vender tus productos y servicios
+              Accede a tu panel de vendedor
             </p>
           </div>
 
+          {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {error}
             </div>
           )}
 
-          {/* Google Sign Up */}
+          {/* Google Sign In */}
           <button
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
@@ -99,7 +86,7 @@ export default function RegistroPage() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
-            {googleLoading ? 'Conectando...' : 'Registrarse con Google'}
+            {googleLoading ? 'Conectando...' : 'Iniciar sesión con Google'}
           </button>
 
           {/* Divider */}
@@ -112,26 +99,14 @@ export default function RegistroPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre del Negocio
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Mi Negocio"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
               </label>
               <input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -142,10 +117,11 @@ export default function RegistroPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña
               </label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -155,33 +131,20 @@ export default function RegistroPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmar Contraseña
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="••••••••"
-              />
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-500 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+              className="w-full bg-primary-500 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
+              {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
 
+          {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-600">
-            ¿Ya tienes cuenta?{' '}
-            <Link href="/login" className="text-primary-500 hover:text-primary-700 font-medium">
-              Inicia sesión
+            ¿No tienes cuenta?{' '}
+            <Link href="/registro" className="text-primary-500 hover:text-primary-700 font-medium">
+              Regístrate aquí
             </Link>
           </div>
         </div>

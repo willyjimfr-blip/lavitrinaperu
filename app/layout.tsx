@@ -19,16 +19,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'LaVitrinaPeru - Marketplace de Productos y Servicios',
+  title: 'Sumawil - Marketplace de Productos y Servicios Peruanos',
   description: 'Descubre y compra productos y servicios de comerciantes peruanos. Marketplace local, compra directa por WhatsApp.',
-  keywords: 'marketplace peru, productos peru, servicios peru, compra whatsapp, comercio local',
-  authors: [{ name: 'LaVitrinaPeru' }],
+  keywords: 'marketplace peru, productos peru, servicios peru, compra whatsapp, comercio local, sumawil',
+  authors: [{ name: 'Sumawil' }],
   openGraph: {
-    title: 'LaVitrinaPeru - Marketplace de Productos y Servicios',
+    title: 'Sumawil - Marketplace de Productos y Servicios Peruanos',
     description: 'Descubre y compra productos y servicios de comerciantes peruanos',
     type: 'website',
     locale: 'es_PE',
-    siteName: 'LaVitrinaPeru',
+    siteName: 'Sumawil',
   },
 };
 
@@ -39,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={`${outfit.variable} ${inter.variable}`}>
-      <body className="font-body antialiased bg-gray-50">
+      <body className="font-body antialiased bg-cream-100">
         <AuthProvider>
           <Navbar />
           <main className="min-h-screen">
