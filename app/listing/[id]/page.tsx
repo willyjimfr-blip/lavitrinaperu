@@ -100,12 +100,13 @@ export default function ListingDetail() {
         <div>
           <div className="relative h-96 bg-gray-200 rounded-xl overflow-hidden mb-4">
             <Image
-              src={listing.images[selectedImage] || '/placeholder.png'}
-              alt={listing.title}
-              fill
-              className="object-cover"
-              priority
-            />
+  src={listing.images[selectedImage]}
+  alt={listing.title}
+  fill
+  className="object-cover"
+  priority
+  unoptimized  // ← AGREGAR ESTO
+/>
           </div>
 
           {listing.images.length > 1 && (
@@ -119,11 +120,12 @@ export default function ListingDetail() {
                   }`}
                 >
                   <Image
-                    src={image}
-                    alt={`${listing.title} - imagen ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
+  src={image}
+  alt={`${listing.title} ${index + 1}`}
+  fill
+  className="object-cover"
+  unoptimized  // ← AGREGAR ESTO
+/>
                 </button>
               ))}
             </div>
@@ -159,7 +161,7 @@ export default function ListingDetail() {
             <p className="text-gray-700 whitespace-pre-wrap">{listing.description}</p>
           </div>
 
-          {listing.tags.length > 0 && (
+          {listing.tags && listing.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
               {listing.tags.map((tag, index) => (
                 <span key={index} className="flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
