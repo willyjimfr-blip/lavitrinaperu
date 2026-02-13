@@ -19,16 +19,62 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Sumawil - Marketplace de Productos y Servicios Peruanos',
-  description: 'Descubre y compra productos y servicios de comerciantes peruanos. Marketplace local, compra directa por WhatsApp.',
-  keywords: 'marketplace peru, productos peru, servicios peru, compra whatsapp, comercio local, sumawil',
-  authors: [{ name: 'Sumawil' }],
+  metadataBase: new URL('https://sumawil.com'),
+  title: {
+    default: 'Sumawil - Marketplace de Productos y Servicios Peruanos',
+    template: '%s | Sumawil',
+  },
+  description: 'Descubre y compra productos y servicios de comerciantes peruanos. Marketplace local, compra directa por WhatsApp. Encuentra tecnología, moda, hogar, alimentos y más.',
+  keywords: [
+    'marketplace peru',
+    'productos peruanos',
+    'servicios peru',
+    'compra whatsapp',
+    'comercio local peru',
+    'sumawil',
+    'tienda online peru',
+    'vendedores peru',
+  ],
+  authors: [{ name: 'Sumawil', url: 'https://sumawil.com' }],
+  creator: 'Sumawil',
+  publisher: 'Sumawil',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+    },
+  },
   openGraph: {
-    title: 'Sumawil - Marketplace de Productos y Servicios Peruanos',
-    description: 'Descubre y compra productos y servicios de comerciantes peruanos',
     type: 'website',
     locale: 'es_PE',
+    url: 'https://sumawil.com',
     siteName: 'Sumawil',
+    title: 'Sumawil - Marketplace de Productos y Servicios Peruanos',
+    description: 'Descubre y compra productos y servicios de comerciantes peruanos directamente por WhatsApp.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Sumawil - Marketplace Peruano',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Sumawil - Marketplace Peruano',
+    description: 'Descubre y compra productos y servicios de comerciantes peruanos.',
+    images: ['/og-image.png'],
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
+  verification: {
+    google: 'tu-codigo-de-verificacion-google', // Opcional
   },
 };
 
