@@ -21,13 +21,14 @@ export default function ListingCard({ listing }: ListingCardProps) {
       href={`/listing/${listing.id}`}
       className="group block bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-cream-200"
     >
-      <div className="relative h-48 bg-cream-200 overflow-hidden">
+      {/* Imagen con aspect ratio fijo */}
+      <div className="relative w-full aspect-square bg-cream-200 overflow-hidden">
         {mainImage ? (
           <Image
             src={mainImage}
             alt={listing.title}
             fill
-            className="object-cover group-hover:scale-110 transition-transform duration-300"
+            className="object-contain group-hover:scale-105 transition-transform duration-300 p-2"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             unoptimized
           />
@@ -37,8 +38,9 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </div>
         )}
         
+        {/* Badges */}
         <div className="absolute top-3 left-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-md ${
             listing.type === 'product'
               ? 'bg-primary-500 text-white'
               : 'bg-olive-500 text-white'
@@ -49,18 +51,19 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
         {listing.featured && (
           <div className="absolute top-3 right-3">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500 text-white">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500 text-white shadow-md">
               ⭐ Destacado
             </span>
           </div>
         )}
       </div>
 
+      {/* Content */}
       <div className="p-4">
-        <h3 className="font-bold text-lg text-dark group-hover:text-primary-500 transition-colors line-clamp-2 mb-2">
+        <h3 className="font-bold text-lg text-dark group-hover:text-primary-500 transition-colors line-clamp-2 mb-2 min-h-[3.5rem]">
           {listing.title}
         </h3>
-        <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+        <p className="text-gray-600 text-sm line-clamp-2 mb-3 min-h-[2.5rem]">
           {listing.description}
         </p>
         <div className="flex items-center justify-between">
