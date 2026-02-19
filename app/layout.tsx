@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     apple: '/apple-icon.png',
   },
   verification: {
-    google: 'googlea0d8ee4b882d274c.html', // Opcional
+    google: 'vA4KLHxSDh80NOTRpR8J7nEcOUUD2-qYi346jrlBo-I', // Opcional
   },
 };
 
