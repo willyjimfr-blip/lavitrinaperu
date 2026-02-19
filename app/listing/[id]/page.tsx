@@ -1,272 +1,217 @@
-
-// app/listing/[id]/page.tsx
+// app/admin/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Listing, Category } from '@/types';
-import Image from 'next/image';
-import { MessageCircle, Tag, Clock, Share2, ArrowLeft } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import AdminRoute from '@/components/AdminRoute';
 import Link from 'next/link';
+import { 
+  Users, 
+  Package, 
+  Tag, 
+  TrendingUp,
+  Eye,
+  Star,
+  ShoppingBag
+} from 'lucide-react';
 
-export default function ListingDetail() {
-  const params = useParams();
-  const id = params.id as string;
-  
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [category, setCategory] = useState<Category | null>(null);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalMerchants: 0,
+    totalListings: 0,
+    activeListings: 0,
+    featuredListings: 0,
+    totalCategories: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(0);
 
   useEffect(() => {
-    if (id) fetchListing();
-  }, [id]);
+    fetchStats();
+  }, []);
 
-  const fetchListing = async () => {
+  const fetchStats = async () => {
     try {
-      const listingDoc = await getDoc(doc(db, 'listings', id));
-      if (listingDoc.exists()) {
-        const data = {
-          id: listingDoc.id,
-          ...listingDoc.data(),
-          tags: listingDoc.data().tags || [],
-          images: listingDoc.data().images || [],
-          createdAt: listingDoc.data().createdAt?.toDate(),
-          updatedAt: listingDoc.data().updatedAt?.toDate(),
-        } as Listing;
-        setListing(data);
+      // Total usuarios
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const totalUsers = usersSnap.size;
+      const totalMerchants = usersSnap.docs.filter(
+        doc => doc.data().role === 'merchant' || doc.data().role === 'pending'
+      ).length;
 
-        if (data.categoryId) {
-          const categoryDoc = await getDoc(doc(db, 'categories', data.categoryId));
-          if (categoryDoc.exists()) {
-            setCategory({ id: categoryDoc.id, ...categoryDoc.data() } as Category);
-          }
-        }
-      }
+      // Total publicaciones
+      const listingsSnap = await getDocs(collection(db, 'listings'));
+      const totalListings = listingsSnap.size;
+      const activeListings = listingsSnap.docs.filter(
+        doc => doc.data().active === true
+      ).length;
+      const featuredListings = listingsSnap.docs.filter(
+        doc => doc.data().featured === true
+      ).length;
+
+      // Total categorías
+      const categoriesSnap = await getDocs(collection(db, 'categories'));
+      const totalCategories = categoriesSnap.size;
+
+      setStats({
+        totalUsers,
+        totalMerchants,
+        totalListings,
+        activeListings,
+        featuredListings,
+        totalCategories,
+      });
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleWhatsAppClick = () => {
-    if (!listing) return;
-    const message = `Hola! Me interesa tu ${listing.type === 'product' ? 'producto' : 'servicio'}: *${listing.title}*. Lo vi en Sumawil.`;
-    const url = `https://wa.me/${listing.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: listing?.title,
-          text: listing?.description,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.log('Error sharing:', err);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copiado al portapapeles');
-    }
-  };
+  const statCards = [
+    {
+      title: 'Total Usuarios',
+      value: stats.totalUsers,
+      icon: Users,
+      color: 'bg-blue-500',
+      textColor: 'text-blue-500',
+    },
+    {
+      title: 'Comerciantes',
+      value: stats.totalMerchants,
+      icon: ShoppingBag,
+      color: 'bg-green-500',
+      textColor: 'text-green-500',
+    },
+    {
+      title: 'Publicaciones',
+      value: stats.totalListings,
+      icon: Package,
+      color: 'bg-purple-500',
+      textColor: 'text-purple-500',
+    },
+    {
+      title: 'Activas',
+      value: stats.activeListings,
+      icon: Eye,
+      color: 'bg-yellow-500',
+      textColor: 'text-yellow-500',
+    },
+    {
+      title: 'Destacadas',
+      value: stats.featuredListings,
+      icon: Star,
+      color: 'bg-orange-500',
+      textColor: 'text-orange-500',
+    },
+    {
+      title: 'Categorías',
+      value: stats.totalCategories,
+      icon: Tag,
+      color: 'bg-pink-500',
+      textColor: 'text-pink-500',
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="animate-pulse">
-            <div className="aspect-square bg-cream-200 rounded-xl mb-4"></div>
-            <div className="grid grid-cols-4 gap-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="aspect-square bg-cream-200 rounded-lg"></div>
-              ))}
-            </div>
-          </div>
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-cream-200 rounded w-3/4"></div>
-            <div className="h-12 bg-cream-200 rounded w-1/3"></div>
-            <div className="h-32 bg-cream-200 rounded"></div>
-          </div>
+      <AdminRoute>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-xl text-gray-600">Cargando estadísticas...</div>
         </div>
-      </div>
-    );
-  }
-
-  if (!listing) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <h1 className="text-2xl font-bold text-dark mb-4">
-          Publicación no encontrada
-        </h1>
-        <Link href="/" className="text-primary-500 hover:underline">
-          Volver al inicio
-        </Link>
-      </div>
+      </AdminRoute>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back Button */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-primary-500 hover:text-primary-700 mb-6 font-medium"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver al inicio
-      </Link>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Galería de imágenes */}
-        <div>
-          {/* Imagen principal */}
-          <div className="relative w-full aspect-square bg-cream-200 rounded-xl overflow-hidden mb-4 border border-cream-300">
-            {listing.images && listing.images.length > 0 ? (
-              <Image
-                src={listing.images[selectedImage]}
-                alt={listing.title}
-                fill
-                className="object-contain p-4"
-                priority
-                unoptimized
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="text-6xl">📦</span>
-              </div>
-            )}
-          </div>
-
-          {/* Thumbnails */}
-          {listing.images && listing.images.length > 1 && (
-            <div className="grid grid-cols-4 gap-2">
-              {listing.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`relative aspect-square bg-cream-200 rounded-lg overflow-hidden border-2 transition-colors ${
-                    selectedImage === index 
-                      ? 'border-primary-500' 
-                      : 'border-cream-300 hover:border-primary-300'
-                  }`}
-                >
-                  <Image
-                    src={image}
-                    alt={`${listing.title} ${index + 1}`}
-                    fill
-                    className="object-contain p-1"
-                    unoptimized
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+    <AdminRoute>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-display font-bold text-dark mb-2">
+            Panel de Administración
+          </h1>
+          <p className="text-gray-600">
+            Gestiona todo el marketplace desde aquí
+          </p>
         </div>
 
-        {/* Detalles */}
-        <div>
-          {/* Badges */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            {category && (
-              <Link
-                href={`/categoria/${category.slug}`}
-                className="px-3 py-1 bg-cream-200 hover:bg-cream-300 text-dark rounded-full text-sm font-medium transition-colors"
-              >
-                {category.icon} {category.name}
-              </Link>
-            )}
-            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-              listing.type === 'product'
-                ? 'bg-primary-100 text-primary-700'
-                : 'bg-olive-100 text-olive-700'
-            }`}>
-              {listing.type === 'product' ? '📦 Producto' : '💼 Servicio'}
-            </span>
-            {listing.featured && (
-              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
-                ⭐ Destacado
-              </span>
-            )}
-          </div>
-
-          {/* Título */}
-          <h1 className="text-3xl md:text-4xl font-display font-bold text-dark mb-4">
-            {listing.title}
-          </h1>
-
-          {/* Precio */}
-          <div className="text-4xl md:text-5xl font-bold text-primary-500 mb-6">
-            {listing.price}
-          </div>
-
-          {/* Descripción */}
-          <div className="mb-6">
-            <h3 className="font-bold text-dark mb-2 text-lg">Descripción</h3>
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-              {listing.description}
-            </p>
-          </div>
-
-          {/* Tags */}
-          {listing.tags && listing.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {listing.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="flex items-center gap-1 px-3 py-1 bg-cream-200 text-dark rounded-full text-sm"
-                >
-                  <Tag className="w-3 h-3 text-primary-500" />
-                  {tag}
-                </span>
-              ))}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {statCards.map((stat, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
+                  <p className="text-3xl font-bold text-dark">{stat.value}</p>
+                </div>
+                <div className={`p-3 rounded-full ${stat.color} bg-opacity-10`}>
+                  <stat.icon className={`w-8 h-8 ${stat.textColor}`} />
+                </div>
+              </div>
             </div>
-          )}
+          ))}
+        </div>
 
-          {/* Fecha */}
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-8 pb-8 border-b border-cream-200">
-            <Clock className="w-4 h-4" />
-            Publicado el {listing.createdAt instanceof Date
-              ? listing.createdAt.toLocaleDateString('es-PE', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })
-              : 'Fecha no disponible'}
-          </div>
-
-          {/* Botones de acción */}
-          <div className="space-y-3 sticky top-4">
-            <button
-              onClick={handleWhatsAppClick}
-              className="w-full bg-whatsapp hover:bg-whatsapp-hover text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors shadow-lg hover:shadow-xl text-lg"
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-dark mb-4">
+            Acciones Rápidas
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              href="/admin/categorias"
+              className="bg-primary-500 hover:bg-primary-700 text-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all text-center"
             >
-              <MessageCircle className="w-6 h-6" />
-              Contactar por WhatsApp
-            </button>
+              <Tag className="w-12 h-12 mx-auto mb-3" />
+              <h3 className="text-xl font-bold mb-2">Gestionar Categorías</h3>
+              <p className="text-primary-100">Crear, editar y eliminar categorías</p>
+            </Link>
 
-            <button
-              onClick={handleShare}
-              className="w-full bg-cream-200 hover:bg-cream-300 text-dark font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors"
+            <Link
+              href="/admin/publicaciones"
+              className="bg-purple-500 hover:bg-purple-700 text-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all text-center"
             >
-              <Share2 className="w-5 h-5" />
-              Compartir publicación
-            </button>
-          </div>
+              <Package className="w-12 h-12 mx-auto mb-3" />
+              <h3 className="text-xl font-bold mb-2">Ver Publicaciones</h3>
+              <p className="text-purple-100">Gestionar todas las publicaciones</p>
+            </Link>
 
-          {/* Tip */}
-          <div className="mt-6 p-4 bg-olive-50 rounded-xl border border-olive-200">
-            <p className="text-sm text-olive-700">
-              <strong>💡 Tip:</strong> Al contactar por WhatsApp, el vendedor recibirá un mensaje automático con el nombre del producto.
-            </p>
+            <Link
+              href="/admin/comerciantes"
+              className="bg-green-500 hover:bg-green-700 text-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all text-center"
+            >
+              <Users className="w-12 h-12 mx-auto mb-3" />
+              <h3 className="text-xl font-bold mb-2">Ver Comerciantes</h3>
+              <p className="text-green-100">Administrar usuarios comerciantes</p>
+            </Link>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white rounded-xl p-6 shadow-md">
+          <h2 className="text-2xl font-bold text-dark mb-4">
+            Actividad Reciente
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-cream-100 rounded-lg">
+              <TrendingUp className="w-6 h-6 text-green-500" />
+              <div>
+                <p className="font-medium text-dark">
+                  Sistema funcionando correctamente
+                </p>
+                <p className="text-sm text-gray-600">
+                  {stats.activeListings} publicaciones activas
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </AdminRoute>
   );
 }

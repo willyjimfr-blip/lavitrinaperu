@@ -18,13 +18,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-    if (user) {
-      fetchListings();
-    }
-  }, [user, authLoading, router]);
+  if (!authLoading && !user) {
+    router.push('/login');
+  }
+  if (!authLoading && user && (user.role === 'pending' || !user.active)) {
+    router.push('/pendiente');
+  }
+}, [user, authLoading, router]);
 
   const fetchListings = async () => {
     if (!user) return;

@@ -20,10 +20,11 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signUp: (email: string, password: string, role: UserRole, displayName?: string) => Promise<void>;
+  signUp: (email: string, password: string, role: UserRole, displayName?: string, whatsapp?: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
   isMerchant: boolean;
+  isPending: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   isAdmin: false,
   isMerchant: false,
+  isPending: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -55,8 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...userDoc.data() 
           } as User);
         } else {
-          // Usuario nuevo (primer login con Google)
-          // Se creará como merchant por defecto
           setUser(null);
         }
       } else {
@@ -87,9 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Crear nuevo usuario en Firestore
       const newUser = {
         email: firebaseUser.email || '',
-        role: isAdminEmail ? 'admin' : 'merchant' as UserRole,
+        role: isAdminEmail ? 'admin' : 'pending' as UserRole, // ← CAMBIO AQUÍ
         displayName: firebaseUser.displayName || '',
-        active: true,
+        active: isAdminEmail ? true : false, // ← Admin activo, otros inactivos
         createdAt: new Date(),
       };
       
@@ -104,14 +104,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     role: UserRole,
-    displayName?: string
+    displayName?: string,
+    whatsapp?: string
   ) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const newUser: Omit<User, 'uid'> = {
       email,
-      role,
+      role: 'pending', // ← CAMBIO AQUÍ: Siempre pending hasta que admin apruebe
       displayName: displayName || '',
-      active: true,
+      whatsapp: whatsapp || '',
+      active: false, // ← Inactivo hasta aprobación
       createdAt: new Date(),
     };
     await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
@@ -122,7 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isAdmin = user?.role === 'admin';
-  const isMerchant = user?.role === 'merchant';
+  const isMerchant = user?.role === 'merchant' && user?.active === true;
+  const isPending = user?.role === 'pending' || (user?.role === 'merchant' && user?.active === false);
 
   return (
     <AuthContext.Provider 
@@ -135,7 +138,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp, 
         signOut, 
         isAdmin, 
-        isMerchant 
+        isMerchant,
+        isPending,
       }}
     >
       {children}
