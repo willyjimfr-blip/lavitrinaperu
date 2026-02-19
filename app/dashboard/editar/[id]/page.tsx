@@ -18,7 +18,6 @@ export default function EditarPublicacionPage() {
   const params = useParams();
   const id = params.id as string;
   
-  // Form state
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ListingType>('product');
   const [description, setDescription] = useState('');
@@ -27,15 +26,12 @@ export default function EditarPublicacionPage() {
   const [tags, setTags] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   
-  // Images
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   
-  // Data
   const [categories, setCategories] = useState<Category[]>([]);
   
-  // UI state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -49,7 +45,7 @@ export default function EditarPublicacionPage() {
     }
     fetchListing();
     fetchCategories();
-  }, [user, id]);
+  }, [user, id, router]);
 
   const fetchListing = async () => {
     try {
@@ -63,7 +59,6 @@ export default function EditarPublicacionPage() {
 
       const data = listingDoc.data();
 
-      // Verificar que sea dueño o admin
       if (data.merchantId !== user?.uid && !isAdmin) {
         setError('No tienes permiso para editar esta publicación');
         setLoading(false);
@@ -81,7 +76,7 @@ export default function EditarPublicacionPage() {
       
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching listing:', error);
+      console.error('Error:', error);
       setError('Error al cargar la publicación');
       setLoading(false);
     }
@@ -101,7 +96,7 @@ export default function EditarPublicacionPage() {
       })) as Category[];
       setCategories(cats);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error:', error);
     }
   };
 
@@ -131,10 +126,8 @@ export default function EditarPublicacionPage() {
     const imageUrl = existingImages[index];
     const publicId = extractPublicId(imageUrl);
     
-    // Eliminar de Cloudinary
     await deleteFromCloudinary(publicId);
     
-    // Eliminar del estado
     setExistingImages(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -186,13 +179,9 @@ export default function EditarPublicacionPage() {
     setSaving(true);
 
     try {
-      // Subir nuevas imágenes
       const newUploadedUrls = await uploadNewImages();
-      
-      // Combinar imágenes existentes con nuevas
       const allImages = [...existingImages, ...newUploadedUrls];
 
-      // Actualizar documento
       await updateDoc(doc(db, 'listings', id), {
         title: title.trim(),
         type,
@@ -208,7 +197,7 @@ export default function EditarPublicacionPage() {
       alert('Publicación actualizada exitosamente');
       router.push('/dashboard');
     } catch (error) {
-      console.error('Error updating listing:', error);
+      console.error('Error:', error);
       setError('Error al actualizar la publicación');
     } finally {
       setSaving(false);
@@ -236,7 +225,6 @@ export default function EditarPublicacionPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back */}
       <Link
         href="/dashboard"
         className="inline-flex items-center gap-2 text-primary-500 hover:text-primary-700 mb-6 font-medium"
@@ -262,7 +250,6 @@ export default function EditarPublicacionPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-xl shadow-md p-6">
 
-        {/* Tipo */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tipo de Publicación
@@ -293,7 +280,6 @@ export default function EditarPublicacionPage() {
           </div>
         </div>
 
-        {/* Título */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Título *
@@ -305,11 +291,9 @@ export default function EditarPublicacionPage() {
             required
             maxLength={100}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Ej: iPhone 14 Pro Max 256GB"
           />
         </div>
 
-        {/* Categoría */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Categoría *
@@ -329,7 +313,6 @@ export default function EditarPublicacionPage() {
           </select>
         </div>
 
-        {/* Descripción */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Descripción *
@@ -340,11 +323,9 @@ export default function EditarPublicacionPage() {
             required
             rows={5}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Describe tu producto o servicio en detalle..."
           />
         </div>
 
-        {/* Precio */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Precio *
@@ -355,11 +336,9 @@ export default function EditarPublicacionPage() {
             onChange={(e) => setPrice(e.target.value)}
             required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Ej: S/ 100, Desde S/ 50, Consultar"
           />
         </div>
 
-        {/* WhatsApp */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             WhatsApp *
@@ -370,32 +349,28 @@ export default function EditarPublicacionPage() {
             onChange={(e) => setWhatsapp(e.target.value)}
             required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="+51 999 999 999"
           />
         </div>
 
-        {/* Tags */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Etiquetas (opcional)
+            Etiquetas
           </label>
           <input
             type="text"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="nuevo, importado, garantía (separados por comas)"
+            placeholder="nuevo, importado (separados por comas)"
           />
         </div>
 
-        {/* Imágenes */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Imágenes * (máximo 5)
           </label>
           
           <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-4">
-            {/* Imágenes existentes */}
             {existingImages.map((image, index) => (
               <div key={`existing-${index}`} className="relative aspect-square bg-cream-200 rounded-lg overflow-hidden">
                 <Image
@@ -415,7 +390,6 @@ export default function EditarPublicacionPage() {
               </div>
             ))}
 
-            {/* Nuevas imágenes */}
             {newImagePreviews.map((preview, index) => (
               <div key={`new-${index}`} className="relative aspect-square bg-cream-200 rounded-lg overflow-hidden border-2 border-green-500">
                 <Image
@@ -437,7 +411,6 @@ export default function EditarPublicacionPage() {
               </div>
             ))}
             
-            {/* Agregar más */}
             {(existingImages.length + newImageFiles.length) < 5 && (
               <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-colors">
                 <input
@@ -453,11 +426,10 @@ export default function EditarPublicacionPage() {
             )}
           </div>
 
-          {/* Progress Bar */}
           {uploadingImages && (
             <div className="mb-4">
               <div className="flex justify-between mb-1">
-                <span className="text-sm text-gray-600">Subiendo imágenes...</span>
+                <span className="text-sm text-gray-600">Subiendo...</span>
                 <span className="text-sm font-medium text-primary-500">{uploadProgress}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -474,7 +446,6 @@ export default function EditarPublicacionPage() {
           </p>
         </div>
 
-        {/* Buttons */}
         <div className="flex gap-4 pt-4">
           <Link
             href="/dashboard"
