@@ -5,6 +5,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import Analytics from './analytics';
 
 const outfit = Outfit({ 
   subsets: ['latin'],
@@ -74,7 +75,7 @@ export const metadata: Metadata = {
     apple: '/apple-icon.png',
   },
   verification: {
-    google: 'vA4KLHxSDh80NOTRpR8J7nEcOUUD2-qYi346jrlBo-I', // Opcional
+    google: 'vA4KLHxSDh80NOTRpR8J7nEcOUUD2-qYi346jrlBo-I',
   },
 };
 
@@ -93,6 +94,7 @@ export default function RootLayout({
           </main>
           <Footer />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
